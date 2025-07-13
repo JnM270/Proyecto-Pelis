@@ -1,6 +1,6 @@
 import { User } from '../models/userModels.js';
 import { generateToken } from '../generateToken.js';
-
+ 
 // Registro
 export const registerUserController = async (req, res) => {
   const { username, email, password } = req.body;
