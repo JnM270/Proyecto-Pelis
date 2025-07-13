@@ -1,96 +1,101 @@
-import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import Retoceso from "./Retroceso";
+import React, { useState } from 'react';
+import Retoceso from './Retroceso';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { SERVER_URL } from '../config/config';
 
 const Login = ({ navigation }) => {
-
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const API_URL = 'http://X:port'; 
+  const [loading, setLoading]   = useState(false);
 
   const handleLogin = async () => {
-    // Validaciones
     if (!email || !password) {
-      Alert.alert('Error', 'Todos los campos son obligatorios');
-      return;
+      return Alert.alert('Error', 'Debes completar ambos campos');
     }
 
-    setIsLoading(true);
-
+    setLoading(true);
     try {
-      // Aquí se hace la petición al backend
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password
-        }),
-      });
 
-      const data = await response.json();
+      const resp = await axios.post(
+        `${SERVER_URL}/user/login`,
+        { email, password }
+      );
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Error en el inicio de sesión');
+      if (resp.data.success) {
+        
+        await SecureStore.setItemAsync('userToken', resp.data.token);
+
+        Alert.alert(
+          '✔️ Sesión iniciada',
+          `Bienvenido ${resp.data.user.username || resp.data.user.email}`
+        );
+        
+        navigation.replace('ListaPelis');
+      } else {
+        Alert.alert('Error', resp.data.message || 'Credenciales inválidas');
       }
-      
-      Alert.alert('Tarea completada', 'Se ha iniciado sesión', [
-        { text: 'OK', onPress: () => navigation.navigate('ListaPelis') }
-      ]);
-      
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Credenciales incorrectas');
+    } catch (err) {
+      console.error('Login fallido:', err.response?.data || err.message);
+      Alert.alert(
+        'Error',
+        err.response?.data?.message ||
+        'Ocurrió un error al conectar con el servidor'
+      );
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Gestiona el retroceso entre pantallas */}
       <Retoceso currentScreenName="Login" navigation={navigation} />
+
       <View style={styles.topSectionL}>
-        <Image source={require("../assets/logoM1.png")} style={styles.logoL} />
+        <Image source={require('../assets/logoM1.png')} style={styles.logoL} />
         <Text style={styles.titleL}>BAD SEED</Text>
       </View>
-      
+
       <Text style={styles.title}>Iniciar Sesión</Text>
-      
-      <TextInput 
-        style={styles.input} 
-        placeholder="Correo electrónico" 
+
+      <TextInput
+        style={styles.input}
+        placeholder="Correo electrónico"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
       />
-      
-      <TextInput 
-        style={styles.input} 
-        placeholder="Contraseña" 
+
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Ingresar</Text>
-        </TouchableOpacity>
-      )}
-      
-      <TouchableOpacity onPress={() => navigation.navigate('Registro')}>
-        <Text style={styles.registerText}>¿No tienes cuenta? Regístrate</Text>
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.buttonText}>Ingresar</Text>
+        }
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.replace('Registro')}>
+        <Text style={styles.registerText}>
+          ¿No tienes cuenta? Regístrate
+        </Text>
       </TouchableOpacity>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -161,8 +166,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontFamily: "Inter",
    
-  },
+ },
 });
 
 export default Login;
-
