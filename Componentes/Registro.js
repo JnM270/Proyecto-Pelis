@@ -1,102 +1,116 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native'; 
-import Retoceso from "./Retroceso"; 
+import { StyleSheet,Text,View,TextInput,TouchableOpacity,Image,Alert,ActivityIndicator} from 'react-native';
+import Retoceso from './Retroceso';
 import axios from 'axios';
-import { URL_SERVER } from '@env';
+import * as SecureStore from 'expo-secure-store';
+import { SERVER_URL } from '../config/config'; 
 
 const Registro = ({ navigation }) => {
-
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [loading, setLoading]   = useState(false);
 
-  const API_URL = URL_SERVER
+  const handleRegister = async () => {
+    // Validaciones
+    if ( !email || !password || !confirmPwd) {
+      return Alert.alert('Error', 'Todos los campos son obligatorios');
+    }
+    if (password !== confirmPwd) {
+      return Alert.alert('Error', 'Las contraseñas no coinciden');
+    }
 
-const handleRegister = async () => {
-  if (!email || !password || !confirmPassword) {
-    Alert.alert('Error', 'Todos los campos son obligatorios');
-    return;
-  }
+    setLoading(true);
+    try {
+      //URL del config
+      const resp = await axios.post(
+        `${SERVER_URL}/user/register`,
+        { username, email, password }
+      );
 
-  if (password !== confirmPassword) {
-    Alert.alert('Error', 'Las contraseñas no coinciden');
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const response = await axios.post(`${API_URL}/api/auth/registro`, {
-      email,
-      password
-    });
-
-    console.log('Registro completado:', response.data);
-
-    Alert.alert('Tarea completada', 'Usuario registrado exitosamente', [
-      { text: 'OK', onPress: () => navigation.navigate('ListaPelis') }
-    ]);
-    
-  } catch (error) {
-    console.error('Ha ocurrido un error al registrar al usuario:', error.response?.data || error.message);
-    const mensaje = error.response?.data?.error || 'Error al registrar el usuario';
-    Alert.alert('Error', mensaje);
-  } finally {
-    setIsLoading(false);
-  }
-};
- console.log('URL del servidor:', URL_SERVER);
+      if (resp.data.success) {
+       
+        if (resp.data.token) {
+          await SecureStore.setItemAsync('userToken', resp.data.token);
+        
+          navigation.replace('ListaPelis');
+        } else {
+         
+          Alert.alert('Usuario registrado correctamente');
+          navigation.replace('Login');
+        }
+      } else {
+        Alert.alert('Error', resp.data.message || 'No se pudo registrar');
+      }
+    } catch (err) {
+      console.error('Registro fallido:', err.response?.data || err.message);
+      Alert.alert(
+        'Error',
+        err.response?.data?.message ||
+        'Ocurrió un error al conectar con el servidor'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Gestiona el retroceso entre pantallas */}
       <Retoceso currentScreenName="Registro" navigation={navigation} />
+
       <View style={styles.topSectionR}>
-        <Image source={require("../assets/logoM1.png")} style={styles.logoR} />
+        <Image source={require('../assets/logoM1.png')} style={styles.logoR} />
         <Text style={styles.titleR}>BAD SEED</Text>
       </View>
-      
+
       <Text style={styles.title}>Registrarse</Text>
-      
-      <TextInput 
-        style={styles.input} 
-        placeholder="Correo electrónico" 
+
+     <TextInput style={styles.input} placeholder="Usuario" value={username} onChangeText={setUsername} autoCapitalize="none" />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Correo electrónico"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
       />
-      
-      <TextInput 
-        style={styles.input} 
-        placeholder="Contraseña" 
+
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      
-      <TextInput 
-      style={styles.input} 
-      placeholder="Confirmar contraseña" secureTextEntry 
-      value={confirmPassword}
-        onChangeText={setConfirmPassword}
+
+      <TextInput
+        style={styles.input}
+        placeholder="Confirmar contraseña"
+        secureTextEntry
+        value={confirmPwd}
+        onChangeText={setConfirmPwd}
       />
-      
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Crear cuenta</Text>
-        </TouchableOpacity>
-      )}
-      
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={styles.buttonText}>Crear cuenta</Text>
+        }
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.replace('Login')}>
         <Text style={styles.loginText}>¿Ya tienes cuenta? Inicia sesión</Text>
       </TouchableOpacity>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -110,8 +124,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     color: "#666666",
-    
-    
   },
   logoR: {
     width: 180,
@@ -146,8 +158,6 @@ const styles = StyleSheet.create({
     borderColor: '#e13b35',
     borderRadius: 15,
     backgroundColor: "white",
-    
-   
   },
   button: {
     backgroundColor: '#cc3a3a',
